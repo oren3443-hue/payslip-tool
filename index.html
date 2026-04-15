@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מערכת תלושים</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2335;
+    --border: #2a3050;
+    --accent: #4f7fff;
+    --accent2: #7c5cfc;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --text: #e8ecf4;
+    --text2: #8b93b0;
+    --text3: #5a6380;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    direction: rtl;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0f1117 0%, #181c27 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .header h1 { font-size: 1.4rem; font-weight: 700; }
+  .header p { font-size: 0.85rem; color: var(--text2); }
+
+  /* Main layout */
+  .main { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+
+  /* Steps */
+  .step { margin-bottom: 28px; }
+  .step-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-num {
+    width: 22px; height: 22px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    color: white;
+    font-weight: 700;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+  }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 36px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag {
+    border-color: var(--accent);
+    background: rgba(79,127,255,0.05);
+  }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 10px; }
+  .upload-title { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
+  .upload-sub { font-size: 0.83rem; color: var(--text2); }
+  .upload-zone.done {
+    border-color: var(--success);
+    background: rgba(52,211,153,0.05);
+  }
+  .upload-zone.done .upload-icon::after { content: " ✓"; color: var(--success); font-size: 1.2rem; }
+
+  /* Preview table */
+  .preview-wrap {
+    margin-top: 16px;
+    max-height: 260px;
+    overflow-y: auto;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: var(--text2);
+    position: sticky; top: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(42,48,80,0.5);
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(79,127,255,0.04); }
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-מפעל { background: rgba(251,191,36,0.15); color: var(--warning); }
+  .badge-סניפים { background: rgba(79,127,255,0.15); color: var(--accent); }
+  .badge-קווין { background: rgba(124,92,252,0.15); color: var(--accent2); }
+  .badge-אחר { background: rgba(139,147,176,0.15); color: var(--text2); }
+  .badge-no-email { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+  /* Mode selector */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .mode-btn {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: right;
+    transition: all 0.18s;
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.88rem;
+  }
+  .mode-btn:hover {
+    border-color: var(--accent);
+    background: rgba(79,127,255,0.05);
+  }
+  .mode-btn.active {
+    border-color: var(--accent);
+    background: rgba(79,127,255,0.1);
+    color: white;
+  }
+  .mode-btn .mode-icon { font-size: 1.4rem; margin-bottom: 6px; display: block; }
+  .mode-btn .mode-title { font-weight: 600; display: block; margin-bottom: 2px; }
+  .mode-btn .mode-desc { font-size: 0.76rem; color: var(--text2); display: block; }
+  .mode-btn.active .mode-desc { color: rgba(255,255,255,0.6); }
+
+  /* Options panel */
+  .options-panel {
+    margin-top: 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .options-panel label {
+    font-size: 0.83rem;
+    color: var(--text2);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  /* Toggle row */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .toggle-label { font-size: 0.88rem; color: var(--text2); }
+  .toggle {
+    display: flex;
+    background: var(--surface2);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .toggle button {
+    background: none;
+    border: none;
+    padding: 6px 14px;
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.82rem;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle button.active {
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  /* Dept checkboxes */
+  .dept-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .dept-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg);
+    color: var(--text2);
+    user-select: none;
+  }
+  .dept-chip:hover { border-color: var(--accent); color: var(--text); }
+  .dept-chip.selected { border-color: var(--accent); background: rgba(79,127,255,0.12); color: var(--accent); }
+  .dept-chip input { display: none; }
+
+  /* Employee multi-select */
+  .emp-search {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 14px;
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.88rem;
+    margin-bottom: 10px;
+    outline: none;
+    direction: rtl;
+  }
+  .emp-search:focus { border-color: var(--accent); }
+  .emp-list-wrap {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .emp-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(42,48,80,0.4);
+    transition: background 0.12s;
+  }
+  .emp-item:last-child { border-bottom: none; }
+  .emp-item:hover { background: rgba(79,127,255,0.06); }
+  .emp-item input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+  .emp-item-name { font-size: 0.87rem; flex: 1; }
+  .emp-item-num { font-size: 0.78rem; color: var(--text3); }
+
+  /* Filename template */
+  .template-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 14px;
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.88rem;
+    outline: none;
+    direction: ltr;
+    text-align: left;
+  }
+  .template-input:focus { border-color: var(--accent); }
+  .var-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .var-chip {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--accent);
+    font-family: monospace;
+    transition: background 0.12s;
+  }
+  .var-chip:hover { background: rgba(79,127,255,0.1); }
+
+  /* Excel column selector */
+  .select-styled {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.88rem;
+    outline: none;
+    cursor: pointer;
+    direction: rtl;
+  }
+  .select-styled:focus { border-color: var(--accent); }
+
+  /* Action button */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 28px;
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(79,127,255,0.35); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 22px;
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Progress */
+  .progress-wrap { margin-top: 18px; }
+  .progress-bar-bg {
+    background: var(--surface2);
+    border-radius: 10px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    transition: width 0.3s;
+  }
+  .progress-text { font-size: 0.82rem; color: var(--text2); }
+
+  /* Result */
+  .result-box {
+    background: rgba(52,211,153,0.07);
+    border: 1px solid rgba(52,211,153,0.25);
+    border-radius: 10px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .result-info { font-size: 0.9rem; }
+  .result-info strong { color: var(--success); font-size: 1.05rem; }
+  .result-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Missing email section */
+  .missing-section {
+    background: rgba(248,113,113,0.06);
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 16px;
+  }
+  .missing-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--danger);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Upload excel inline */
+  .inline-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text2);
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .inline-upload:hover { border-color: var(--accent); color: var(--accent); }
+  .inline-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .inline-upload.done { border-color: var(--success); color: var(--success); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  .hidden { display: none !important; }
+  .flex-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  /* Info tip */
+  .tip {
+    font-size: 0.78rem;
+    color: var(--text3);
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Stats row */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+  }
+  .stat-chip strong { color: var(--accent); font-size: 1.1rem; display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📑</div>
+  <div>
+    <h1>מערכת ניהול תלושים</h1>
+    <p>פיצול, מיון ושליחה של תלושי שכר</p>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- STEP 1: Upload PDF -->
+  <div class="step">
+    <div class="step-label"><span class="step-num">1</span> העלאת קובץ תלושים</div>
+    <div class="card">
+      <div class="upload-zone" id="pdfZone">
+        <input type="file" accept=".pdf" id="pdfInput">
+        <div class="upload-icon" id="pdfIcon">📄</div>
+        <div class="upload-title">גרור קובץ PDF לכאן או לחץ לבחירה</div>
+        <div class="upload-sub">קובץ PDF מאוחד עם כל תלושי השכר</div>
+      </div>
+      <div id="pdfPreviewWrap" class="hidden">
+        <div class="stats-row" id="pdfStats"></div>
+        <div class="preview-wrap" style="margin-top:14px">
+          <table id="previewTable">
+            <thead>
+              <tr>
+                <th>מספר עובד</th>
+                <th>שם עובד</th>
+                <th>מחלקה</th>
+                <th>קטגוריה</th>
+                <th>חודש</th>
+                <th>עמוד</th>
+              </tr>
+            </thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Mode selection -->
+  <div class="step" id="step2" style="display:none">
+    <div class="step-label"><span class="step-num">2</span> בחירת פעולה</div>
+    <div class="card">
+      <div class="mode-grid">
+        <button class="mode-btn" onclick="setMode('all')">
+          <span class="mode-icon">📂</span>
+          <span class="mode-title">כל התלושים</span>
+          <span class="mode-desc">פיצול לתלוש נפרד לכל עובד</span>
+        </button>
+        <button class="mode-btn" onclick="setMode('dept-auto')">
+          <span class="mode-icon">🏭</span>
+          <span class="mode-title">לפי מחלקות (אוטומטי)</span>
+          <span class="mode-desc">מפעל / סניפים / קווין קאנס / אחר</span>
+        </button>
+        <button class="mode-btn" onclick="setMode('dept-pick')">
+          <span class="mode-icon">🔍</span>
+          <span class="mode-title">מחלקות ספציפיות</span>
+          <span class="mode-desc">בחירה מרשימת המחלקות בקובץ</span>
+        </button>
+        <button class="mode-btn" onclick="setMode('excel')">
+          <span class="mode-icon">📊</span>
+          <span class="mode-title">רשימת עובדים מאקסל</span>
+          <span class="mode-desc">העלאת קובץ אקסל עם מספרי עובד</span>
+        </button>
+        <button class="mode-btn" onclick="setMode('pick')">
+          <span class="mode-icon">👤</span>
+          <span class="mode-title">עובדים ספציפיים</span>
+          <span class="mode-desc">בחירה ידנית מהרשימה</span>
+        </button>
+        <button class="mode-btn" onclick="setMode('email')">
+          <span class="mode-icon">📧</span>
+          <span class="mode-title">שליחה במייל (n8n)</span>
+          <span class="mode-desc">ייצוא ZIP + CSV עם פרטי שליחה</span>
+        </button>
+        <button class="mode-btn" style="grid-column: span 2" onclick="setMode('missing')">
+          <span class="mode-icon">⚠️</span>
+          <span class="mode-title">עובדים ללא מייל</span>
+          <span class="mode-desc">זיהוי חסרי מייל + ייצוא תלושים לשליחה ידנית</span>
+        </button>
+      </div>
+
+      <!-- Options panels -->
+      <div id="opts-all" class="options-panel hidden"></div>
+
+      <div id="opts-dept-auto" class="options-panel hidden">
+        <div class="toggle-row">
+          <span class="toggle-label">סוג קובץ פלט:</span>
+          <div class="toggle">
+            <button class="active" onclick="setMerge('dept-auto','merged',this)">מחובר לפי קטגוריה</button>
+            <button onclick="setMerge('dept-auto','split',this)">מפוצל לתלושים בודדים</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="opts-dept-pick" class="options-panel hidden">
+        <label>בחר מחלקות:</label>
+        <div class="dept-grid" id="deptChips"></div>
+        <div class="toggle-row" style="margin-top:14px">
+          <span class="toggle-label">סוג קובץ פלט:</span>
+          <div class="toggle">
+            <button class="active" onclick="setMerge('dept-pick','merged',this)">מחובר</button>
+            <button onclick="setMerge('dept-pick','split',this)">מפוצל</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="opts-excel" class="options-panel hidden">
+        <label>העלה קובץ אקסל עם רשימת עובדים:</label>
+        <div class="inline-upload" id="excelUploadZone">
+          <input type="file" accept=".xlsx,.xls,.csv" id="excelInput" onchange="loadExcel(this)">
+          <span>📊</span>
+          <span id="excelUploadLabel">לחץ לבחירת קובץ Excel</span>
+        </div>
+        <div id="excelColWrap" class="hidden" style="margin-top:12px">
+          <label>עמודת מספר עובד:</label>
+          <select class="select-styled" id="excelColSelect" onchange="setExcelCol()"></select>
+          <div class="tip">💡 בחר את העמודה שמכילה את מספר העובד (כפי שמופיע בתלוש)</div>
+        </div>
+        <div class="toggle-row" style="margin-top:14px">
+          <span class="toggle-label">סוג קובץ פלט:</span>
+          <div class="toggle">
+            <button class="active" onclick="setMerge('excel','merged',this)">מחובר</button>
+            <button onclick="setMerge('excel','split',this)">מפוצל</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="opts-pick" class="options-panel hidden">
+        <label>חפש ובחר עובדים:</label>
+        <input class="emp-search" id="empSearch" placeholder="חיפוש לפי שם או מספר עובד..." oninput="filterEmployees()">
+        <div class="emp-list-wrap">
+          <div id="empList"></div>
+        </div>
+        <div class="tip" id="empSelCount">💡 לא נבחרו עובדים</div>
+        <div class="toggle-row" style="margin-top:14px">
+          <span class="toggle-label">סוג קובץ פלט:</span>
+          <div class="toggle">
+            <button class="active" onclick="setMerge('pick','merged',this)">מחובר</button>
+            <button onclick="setMerge('pick','split',this)">מפוצל</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="opts-email" class="options-panel hidden">
+        <label>העלה קובץ אקסל עם פרטי עובדים (כולל מייל):</label>
+        <div class="inline-upload" id="emailExcelZone">
+          <input type="file" accept=".xlsx,.xls,.csv" id="emailExcelInput" onchange="loadEmailExcel(this)">
+          <span>📊</span>
+          <span id="emailExcelLabel">לחץ לבחירת קובץ Excel</span>
+        </div>
+        <div id="emailColWrap" class="hidden" style="margin-top:12px">
+          <div class="flex-row">
+            <div>
+              <label>עמודת מספר עובד:</label>
+              <select class="select-styled" id="emailEmpCol"></select>
+            </div>
+            <div>
+              <label>עמודת מייל:</label>
+              <select class="select-styled" id="emailMailCol"></select>
+            </div>
+          </div>
+        </div>
+        <div class="tip" style="margin-top:10px">💡 הכלי ייצא ZIP עם תלושים + קובץ employees.csv מוכן ל-n8n</div>
+      </div>
+
+      <div id="opts-missing" class="options-panel hidden">
+        <label>העלה קובץ אקסל עם פרטי עובדים:</label>
+        <div class="inline-upload" id="missingExcelZone">
+          <input type="file" accept=".xlsx,.xls,.csv" id="missingExcelInput" onchange="loadMissingExcel(this)">
+          <span>📊</span>
+          <span id="missingExcelLabel">לחץ לבחירת קובץ Excel</span>
+        </div>
+        <div id="missingColWrap" class="hidden" style="margin-top:12px">
+          <div class="flex-row">
+            <div>
+              <label>עמודת מספר עובד:</label>
+              <select class="select-styled" id="missingEmpCol"></select>
+            </div>
+            <div>
+              <label>עמודת מייל:</label>
+              <select class="select-styled" id="missingMailCol"></select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Filename template -->
+  <div class="step" id="step3" style="display:none">
+    <div class="step-label"><span class="step-num">3</span> תבנית שם קובץ</div>
+    <div class="card">
+      <label style="font-size:0.85rem;color:var(--text2);display:block;margin-bottom:8px">תבנית שם הקובץ (לקבצים מפוצלים):</label>
+      <input class="template-input" id="filenameTemplate" value="{מספר_עובד}_{שם_עובד}_{חודש}">
+      <div class="var-chips">
+        <span class="var-chip" onclick="addVar('{מספר_עובד}')">{מספר_עובד}</span>
+        <span class="var-chip" onclick="addVar('{שם_עובד}')">{שם_עובד}</span>
+        <span class="var-chip" onclick="addVar('{מחלקה}')">{מחלקה}</span>
+        <span class="var-chip" onclick="addVar('{חודש}')">{חודש}</span>
+        <span class="var-chip" onclick="addVar('{ת_ז}')">{ת_ז}</span>
+        <span class="var-chip" onclick="addVar('{מספר_מחלקה}')">{מספר_מחלקה}</span>
+      </div>
+      <div class="tip" id="filenameTip"></div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Execute -->
+  <div class="step" id="step4" style="display:none">
+    <div class="step-label"><span class="step-num">4</span> ביצוע</div>
+    <div class="card">
+      <button class="btn-primary" id="executeBtn" onclick="execute()">
+        <span>⚡</span> הפק תלושים
+      </button>
+      <div id="progressWrap" class="progress-wrap hidden">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar" style="width:0%"></div></div>
+        <div class="progress-text" id="progressText">מעבד...</div>
+      </div>
+      <div id="resultWrap" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Use fake worker to avoid CDN worker CORS issues when opening as local file
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+
+// State
+let pdfBytes = null;
+let payslips = []; // [{pageIndex, empNum, empName, dept, deptNum, deptCat, month, idNum}]
+let currentMode = null;
+let mergeMode = { 'dept-auto': 'merged', 'dept-pick': 'merged', 'excel': 'merged', 'pick': 'merged' };
+let selectedDepts = new Set();
+let selectedEmps = new Set();
+let excelEmpNums = new Set();
+let excelColIndex = null;
+let emailData = []; // [{empNum, email, name}]
+let missingData = [];
+
+// ─── PDF Upload ───────────────────────────────────────────────
+document.getElementById('pdfInput').addEventListener('change', e => {
+  if (e.target.files[0]) loadPDF(e.target.files[0]);
+});
+const pdfZone = document.getElementById('pdfZone');
+pdfZone.addEventListener('dragover', e => { e.preventDefault(); pdfZone.classList.add('drag'); });
+pdfZone.addEventListener('dragleave', () => pdfZone.classList.remove('drag'));
+pdfZone.addEventListener('drop', e => {
+  e.preventDefault(); pdfZone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) loadPDF(e.dataTransfer.files[0]);
+});
+
+async function loadPDF(file) {
+  const icon = document.getElementById('pdfIcon');
+  icon.textContent = '⏳';
+  try {
+  pdfBytes = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice(0), disableWorker: true }).promise;
+  payslips = [];
+
+  for (let i = 0; i < pdf.numPages; i++) {
+    const page = await pdf.getPage(i + 1);
+    const tc = await page.getTextContent();
+    const text = tc.items.map(it => it.str).join(' ');
+    const data = parsePayslip(text, i);
+    if (data) payslips.push(data);
+  }
+
+  pdfZone.classList.add('done');
+  icon.textContent = '📄';
+  renderPreview();
+  if (payslips.length === 0) {
+    document.getElementById('pdfStats').innerHTML = `<div style="color:var(--danger);font-size:0.85rem">⚠️ לא נמצאו תלושים בקובץ – ודא שה-PDF טקסטואלי ולא סרוק</div>`;
+    document.getElementById('pdfPreviewWrap').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('step2').style.display = '';
+  document.getElementById('step3').style.display = '';
+  document.getElementById('step4').style.display = '';
+  } catch(err) {
+    icon.textContent = '❌';
+    pdfZone.querySelector('.upload-title').textContent = 'שגיאה בטעינת הקובץ';
+    pdfZone.querySelector('.upload-sub').textContent = /password/i.test(err.message) ? 'הקובץ מוגן בסיסמה' : 'ודא שמדובר בקובץ PDF תקין';
+    console.error(err);
+  }
+}
+
+function parsePayslip(text, pageIndex) {
+  // Normalize whitespace for easier matching
+  const t = text.replace(/\s+/g, ' ');
+
+  // Employee number – "מספר העובד: 1630" or "מספר העובד: 0397"
+  const empMatch = t.match(/מספר העובד[:\s]+(\d+)/);
+  const empNum = empMatch ? empMatch[1].trim().replace(/^0+(\d)/, '$1') : null;
+  if (!empNum) return null;
+
+  // Keep original with leading zeros for filename use
+  const empNumRaw = empMatch ? empMatch[1].trim() : empNum;
+
+  // Month – "תלוש שכר לחודש 03/2026"
+  const monthMatch = t.match(/לחודש\s+(\d{2})\/(\d{4})/);
+  const month = monthMatch ? `${monthMatch[1]}-${monthMatch[2]}` : '';
+
+  // ID – "מספר זהות: 213208473"
+  const idMatch = t.match(/מספר זהות[:\s]+([\d]+)/);
+  const idNum = idMatch ? idMatch[1].trim() : '';
+
+  // Department – "מחלקה: 010 ס.מטה סניפים" or "מחלקה: 011 ס.מרינה"
+  const deptMatch = t.match(/מחלקה[:\s]+(\d+)\s+([\u05D0-\u05EA"'.\s\u200f]+?)(?=תחילת|ס\.משרה|מצב|דרוג|$)/);
+  let deptNum = '', deptName = '', deptCat = 'אחר';
+  if (deptMatch) {
+    deptNum = deptMatch[1].trim();
+    deptName = deptMatch[2].trim();
+    deptCat = categorizeDept(deptName);
+  }
+
+  // Name – after "לכבוד" keyword, grab next 1-3 Hebrew/latin words
+  // The name appears right after "לכבוד " and ends before the address
+  let empName = '';
+  const nameIdx = t.indexOf('לכבוד ');
+  if (nameIdx !== -1) {
+    const afterKvod = t.slice(nameIdx + 6, nameIdx + 80).trim();
+    // Name is Hebrew words, stop at digits (address) or very long gap
+    const nameMatch2 = afterKvod.match(/^([\u05D0-\u05EA\u200f\s'\-a-zA-Z]+?)(?=\s+[\u05D0-\u05EA]{2,}\s+\d|\s+\d|\s{3,}|$)/);
+    empName = nameMatch2 ? nameMatch2[1].trim() : afterKvod.split(/\s{2,}/)[0].trim();
+    // Clean up trailing single chars
+    empName = empName.replace(/\s+[א-ת]\s*$/, '').trim();
+  }
+
+  return { pageIndex, empNum, empNumRaw, empName, deptNum, deptName, deptCat, month, idNum };
+}
+
+function buildFilename(tmpl, p) {
+  return tmpl
+    .replace(/{מספר_עובד}/g, p.empNumRaw || p.empNum)
+    .replace(/{שם_עובד}/g, p.empName.replace(/\s+/g,'_'))
+    .replace(/{מחלקה}/g, p.deptName.replace(/\s+/g,'_'))
+    .replace(/{חודש}/g, p.month)
+    .replace(/{ת_ז}/g, p.idNum)
+    .replace(/{מספר_מחלקה}/g, p.deptNum);
+}
+
+function categorizeDept(name) {
+  if (!name) return 'אחר';
+  const n = name.trim();
+  if (/queen\s*cans/i.test(n)) return 'קווין קאנס';
+  if (/^מ\./.test(n)) return 'מפעל';
+  if (/^ס\./.test(n)) return 'סניפים';
+  return 'אחר';
+}
+
+function renderPreview() {
+  const tbody = document.getElementById('previewBody');
+  tbody.innerHTML = '';
+  payslips.forEach(p => {
+    const catClass = p.deptCat === 'מפעל' ? 'badge-מפעל' :
+                     p.deptCat === 'סניפים' ? 'badge-סניפים' :
+                     p.deptCat === 'קווין קאנס' ? 'badge-קווין' : 'badge-אחר';
+    tbody.innerHTML += `<tr>
+      <td>${p.empNum}</td>
+      <td>${p.empName}</td>
+      <td>${p.deptName}</td>
+      <td><span class="badge ${catClass}">${p.deptCat}</span></td>
+      <td>${p.month}</td>
+      <td>${p.pageIndex + 1}</td>
+    </tr>`;
+  });
+
+  // Stats
+  const cats = {};
+  payslips.forEach(p => { cats[p.deptCat] = (cats[p.deptCat]||0)+1; });
+  let statsHtml = `<div class="stat-chip"><strong>${payslips.length}</strong>תלושים</div>`;
+  Object.entries(cats).forEach(([k,v]) => {
+    statsHtml += `<div class="stat-chip"><strong>${v}</strong>${k}</div>`;
+  });
+  document.getElementById('pdfStats').innerHTML = statsHtml;
+  document.getElementById('pdfPreviewWrap').classList.remove('hidden');
+}
+
+// ─── Mode ────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.querySelectorAll('.options-panel').forEach(p => p.classList.add('hidden'));
+  document.getElementById('opts-' + mode).classList.remove('hidden');
+
+  // Populate dept chips
+  if (mode === 'dept-pick') renderDeptChips();
+  if (mode === 'pick') renderEmpList();
+
+  updateTemplateVisibility();
+  updateFilenameTip();
+}
+
+function setMerge(mode, val, btn) {
+  mergeMode[mode] = val;
+  btn.closest('.toggle').querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateTemplateVisibility();
+}
+
+function updateTemplateVisibility() {
+  const isSplit = !currentMode || currentMode === 'all' ||
+    (currentMode === 'dept-auto' && mergeMode['dept-auto'] === 'split') ||
+    (currentMode === 'dept-pick' && mergeMode['dept-pick'] === 'split') ||
+    (currentMode === 'excel' && mergeMode['excel'] === 'split') ||
+    (currentMode === 'pick' && mergeMode['pick'] === 'split') ||
+    currentMode === 'email' || currentMode === 'missing';
+}
+
+function addVar(v) {
+  const inp = document.getElementById('filenameTemplate');
+  inp.value += v;
+  updateFilenameTip();
+}
+
+function updateFilenameTip() {
+  const tmpl = document.getElementById('filenameTemplate').value;
+  if (!payslips.length) return;
+  const p = payslips[0];
+  const sample = buildFilename(tmpl, p);
+  document.getElementById('filenameTip').textContent = '📝 דוגמה: ' + sample + '.pdf';
+}
+document.getElementById('filenameTemplate').addEventListener('input', updateFilenameTip);
+
+// ─── Dept chips ───────────────────────────────────────────────
+function renderDeptChips() {
+  const allDepts = [...new Set(payslips.map(p => p.deptName))].filter(Boolean).sort();
+  const container = document.getElementById('deptChips');
+  container.innerHTML = '';
+  allDepts.forEach(d => {
+    const chip = document.createElement('label');
+    chip.className = 'dept-chip' + (selectedDepts.has(d) ? ' selected' : '');
+    chip.innerHTML = `<input type="checkbox" value="${d}" onchange="toggleDept('${d}',this)"> ${d}`;
+    container.appendChild(chip);
+  });
+}
+
+function toggleDept(d, cb) {
+  if (cb.checked) selectedDepts.add(d);
+  else selectedDepts.delete(d);
+  cb.closest('.dept-chip').classList.toggle('selected', cb.checked);
+}
+
+// ─── Employee list ────────────────────────────────────────────
+function renderEmpList(filter = '') {
+  const container = document.getElementById('empList');
+  const lf = filter.toLowerCase();
+  const filtered = payslips.filter(p =>
+    !filter || p.empName.includes(filter) || p.empNum.includes(filter) || p.empName.toLowerCase().includes(lf)
+  );
+  // dedupe by empNum
+  const seen = new Set();
+  const unique = filtered.filter(p => { if (seen.has(p.empNum)) return false; seen.add(p.empNum); return true; });
+
+  container.innerHTML = unique.map(p => `
+    <div class="emp-item">
+      <input type="checkbox" ${selectedEmps.has(p.empNum) ? 'checked' : ''} onchange="toggleEmp('${p.empNum}',this)">
+      <span class="emp-item-name">${p.empName}</span>
+      <span class="emp-item-num">${p.empNum}</span>
+    </div>
+  `).join('');
+  updateEmpCount();
+}
+
+function filterEmployees() {
+  renderEmpList(document.getElementById('empSearch').value);
+}
+
+function toggleEmp(num, cb) {
+  if (cb.checked) selectedEmps.add(num);
+  else selectedEmps.delete(num);
+  updateEmpCount();
+}
+
+function updateEmpCount() {
+  document.getElementById('empSelCount').textContent =
+    selectedEmps.size ? `✅ נבחרו ${selectedEmps.size} עובדים` : '💡 לא נבחרו עובדים';
+}
+
+// ─── Excel loading ────────────────────────────────────────────
+function loadExcel(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    const headers = data[0] || [];
+    const sel = document.getElementById('excelColSelect');
+    sel.innerHTML = headers.map((h,i) => `<option value="${i}">${h || 'עמודה '+(i+1)}</option>`).join('');
+    document.getElementById('excelColWrap').classList.remove('hidden');
+    document.getElementById('excelUploadZone').classList.add('done');
+    document.getElementById('excelUploadLabel').textContent = '✓ ' + file.name;
+    // store data
+    window._excelData = data;
+    setExcelCol();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function setExcelCol() {
+  const data = window._excelData; if (!data) return;
+  const col = parseInt(document.getElementById('excelColSelect').value);
+  excelEmpNums = new Set(data.slice(1).map(r => String(r[col]||'').trim().replace(/\.0$/,'')).filter(Boolean));
+}
+
+async function loadEmailExcel(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    const headers = data[0] || [];
+    const empSel = document.getElementById('emailEmpCol');
+    const mailSel = document.getElementById('emailMailCol');
+    const opts = headers.map((h,i) => `<option value="${i}">${h || 'עמודה '+(i+1)}</option>`).join('');
+    empSel.innerHTML = opts; mailSel.innerHTML = opts;
+    // Auto-detect
+    headers.forEach((h,i) => {
+      if (/עובד|emp/i.test(h)) empSel.value = i;
+      if (/מייל|mail|email|דוא/i.test(h)) mailSel.value = i;
+    });
+    document.getElementById('emailColWrap').classList.remove('hidden');
+    document.getElementById('emailExcelZone').classList.add('done');
+    document.getElementById('emailExcelLabel').textContent = '✓ ' + file.name;
+    window._emailExcelData = data;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function loadMissingExcel(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    const headers = data[0] || [];
+    const empSel = document.getElementById('missingEmpCol');
+    const mailSel = document.getElementById('missingMailCol');
+    const opts = headers.map((h,i) => `<option value="${i}">${h || 'עמודה '+(i+1)}</option>`).join('');
+    empSel.innerHTML = opts; mailSel.innerHTML = opts;
+    headers.forEach((h,i) => {
+      if (/^עובד$|^emp/i.test(String(h))) empSel.value = i;
+      if (/מייל|mail|email|דוא/i.test(String(h))) mailSel.value = i;
+    });
+    document.getElementById('missingColWrap').classList.remove('hidden');
+    document.getElementById('missingExcelZone').classList.add('done');
+    document.getElementById('missingExcelLabel').textContent = '✓ ' + file.name;
+    window._missingExcelData = data;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─── Execute ──────────────────────────────────────────────────
+async function execute() {
+  if (!pdfBytes || !currentMode) return;
+  const btn = document.getElementById('executeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> מעבד...';
+  document.getElementById('progressWrap').classList.remove('hidden');
+  document.getElementById('resultWrap').innerHTML = '';
+
+  try {
+    let filtered = [...payslips];
+
+    if (currentMode === 'dept-pick') {
+      filtered = payslips.filter(p => selectedDepts.has(p.deptName));
+    } else if (currentMode === 'excel') {
+      filtered = payslips.filter(p => excelEmpNums.has(p.empNum));
+    } else if (currentMode === 'pick') {
+      filtered = payslips.filter(p => selectedEmps.has(p.empNum));
+    }
+
+    if (currentMode === 'dept-auto') {
+      await executeDeptAuto();
+    } else if (currentMode === 'email') {
+      await executeEmail();
+    } else if (currentMode === 'missing') {
+      await executeMissing();
+    } else {
+      const isSplit = currentMode === 'all' || mergeMode[currentMode] === 'split';
+      if (isSplit) {
+        await executeSplit(filtered);
+      } else {
+        await executeMerged(filtered, 'תלושים_מחוברים');
+      }
+    }
+  } catch(err) {
+    let msg = err.message || '';
+    let hebrewMsg = 'אירעה שגיאה בעיבוד הקובץ.';
+    if (/password/i.test(msg)) hebrewMsg = 'הקובץ מוגן בסיסמה – נא להסיר את ההגנה ולנסות שוב.';
+    else if (/invalid|corrupt/i.test(msg)) hebrewMsg = 'הקובץ פגום או אינו קובץ PDF תקין.';
+    else if (/worker/i.test(msg)) hebrewMsg = 'שגיאת טעינה – נא לרענן את הדף ולנסות שוב.';
+    else if (/network|fetch/i.test(msg)) hebrewMsg = 'שגיאת רשת – בדוק את החיבור ורענן.';
+    else if (/no payslips|0 תלושים/i.test(msg)) hebrewMsg = 'לא נמצאו תלושים בקובץ – ודא שמדובר ב-PDF טקסטואלי (לא סרוק).';
+    document.getElementById('resultWrap').innerHTML = `<div style="color:var(--danger);font-size:0.88rem;padding:12px;background:rgba(248,113,113,0.08);border-radius:8px;border:1px solid rgba(248,113,113,0.2)">⚠️ ${hebrewMsg}</div>`;
+    console.error(err);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>⚡</span> הפק תלושים';
+}
+
+function setProgress(val, text) {
+  document.getElementById('progressBar').style.width = val + '%';
+  document.getElementById('progressText').textContent = text;
+}
+
+async function extractPage(pageIndex) {
+  const { PDFDocument } = PDFLib;
+  const srcDoc = await PDFDocument.load(pdfBytes);
+  const newDoc = await PDFDocument.create();
+  const [page] = await newDoc.copyPages(srcDoc, [pageIndex]);
+  newDoc.addPage(page);
+  return newDoc.save();
+}
+
+async function executeSplit(filtered) {
+  const tmpl = document.getElementById('filenameTemplate').value;
+  const zip = new JSZip();
+  for (let i = 0; i < filtered.length; i++) {
+    const p = filtered[i];
+    setProgress(Math.round((i/filtered.length)*100), `מעבד: ${p.empName} (${i+1}/${filtered.length})`);
+    const bytes = await extractPage(p.pageIndex);
+    const fname = buildFilename(tmpl, p) + '.pdf';
+    zip.file(fname, bytes);
+  }
+  setProgress(100, 'מסיים...');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  showResult(`${filtered.length} תלושים מוכנים להורדה`, blob, 'תלושים.zip');
+}
+
+async function executeMerged(filtered, name) {
+  const { PDFDocument } = PDFLib;
+  const srcDoc = await PDFDocument.load(pdfBytes);
+  const newDoc = await PDFDocument.create();
+  for (let i = 0; i < filtered.length; i++) {
+    setProgress(Math.round((i/filtered.length)*100), `מאחד: ${i+1}/${filtered.length}`);
+    const [page] = await newDoc.copyPages(srcDoc, [filtered[i].pageIndex]);
+    newDoc.addPage(page);
+  }
+  setProgress(100, 'מסיים...');
+  const bytes = await newDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  showResult(`${filtered.length} תלושים מחוברים`, blob, name + '.pdf');
+}
+
+async function executeDeptAuto() {
+  const cats = ['מפעל', 'סניפים', 'קווין קאנס', 'אחר'];
+  const isSplit = mergeMode['dept-auto'] === 'split';
+  const zip = new JSZip();
+  const tmpl = document.getElementById('filenameTemplate').value;
+  const { PDFDocument } = PDFLib;
+  let total = 0;
+
+  for (const cat of cats) {
+    const group = payslips.filter(p => p.deptCat === cat);
+    if (!group.length) continue;
+
+    if (isSplit) {
+      const folder = zip.folder(cat);
+      for (let i = 0; i < group.length; i++) {
+        setProgress(Math.round((total/payslips.length)*100), `${cat}: ${i+1}/${group.length}`);
+        const bytes = await extractPage(group[i].pageIndex);
+        folder.file(buildFilename(tmpl, group[i]) + '.pdf', bytes);
+        total++;
+      }
+    } else {
+      const srcDoc = await PDFDocument.load(pdfBytes);
+      const newDoc = await PDFDocument.create();
+      for (const p of group) {
+        setProgress(Math.round((total/payslips.length)*100), `מאחד ${cat}...`);
+        const [page] = await newDoc.copyPages(srcDoc, [p.pageIndex]);
+        newDoc.addPage(page);
+        total++;
+      }
+      zip.file(`${cat}.pdf`, await newDoc.save());
+    }
+  }
+
+  setProgress(100, 'מסיים...');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  showResult(`${payslips.length} תלושים מחולקים ל-${cats.length} קטגוריות`, blob, 'תלושים_לפי_מחלקה.zip');
+}
+
+async function executeEmail() {
+  const excelData = window._emailExcelData;
+  if (!excelData) { alert('נא להעלות קובץ אקסל עם פרטי עובדים'); return; }
+  const empCol = parseInt(document.getElementById('emailEmpCol').value);
+  const mailCol = parseInt(document.getElementById('emailMailCol').value);
+
+  // Build email map
+  const emailMap = {};
+  excelData.slice(1).forEach(row => {
+    const num = String(row[empCol]||'').trim().replace(/\.0$/,'');
+    const mail = String(row[mailCol]||'').trim();
+    if (num && mail) emailMap[num] = mail;
+  });
+
+  const tmpl = document.getElementById('filenameTemplate').value;
+  const zip = new JSZip();
+  const pdfsFolder = zip.folder('תלושים');
+  const csvRows = [['employee_number','name','email','department','month','filename']];
+
+  for (let i = 0; i < payslips.length; i++) {
+    const p = payslips[i];
+    setProgress(Math.round((i/payslips.length)*100), `מעבד: ${p.empName}`);
+    const bytes = await extractPage(p.pageIndex);
+    const fname = buildFilename(tmpl, p) + '.pdf';
+    pdfsFolder.file(fname, bytes);
+    const email = emailMap[p.empNum] || '';
+    csvRows.push([p.empNum, p.empName, email, p.deptName, p.month, fname]);
+  }
+
+  // Build CSV
+  const csvContent = csvRows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  zip.file('employees.csv', '\uFEFF' + csvContent); // BOM for Hebrew
+
+  setProgress(100, 'מסיים...');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const noEmail = csvRows.slice(1).filter(r => !r[2]).length;
+  showResult(`${payslips.length} תלושים + employees.csv מוכן ל-n8n${noEmail ? ` (⚠️ ${noEmail} עובדים ללא מייל)` : ''}`, blob, 'שליחה_n8n.zip');
+}
+
+async function executeMissing() {
+  const excelData = window._missingExcelData;
+  if (!excelData) { alert('נא להעלות קובץ אקסל עם פרטי עובדים'); return; }
+  const empCol = parseInt(document.getElementById('missingEmpCol').value);
+  const mailCol = parseInt(document.getElementById('missingMailCol').value);
+
+  const emailMap = {};
+  const nameMap = {};
+  excelData.slice(1).forEach(row => {
+    const num = String(row[empCol]||'').trim().replace(/\.0$/,'');
+    const mail = String(row[mailCol]||'').trim();
+    if (num) { emailMap[num] = mail; nameMap[num] = row[1] || ''; }
+  });
+
+  // Find payslips with no email
+  const missing = payslips.filter(p => !emailMap[p.empNum] || !emailMap[p.empNum].trim());
+
+  if (!missing.length) {
+    setProgress(100, 'הושלם');
+    document.getElementById('resultWrap').innerHTML = `
+      <div class="result-box"><div class="result-info">✅ <strong>כל העובדים בתלושים יש להם מייל!</strong></div></div>`;
+    return;
+  }
+
+  const tmpl = document.getElementById('filenameTemplate').value;
+  const zip = new JSZip();
+  const xlsxRows = [['מספר עובד', 'שם עובד', 'מחלקה', 'חודש']];
+
+  for (let i = 0; i < missing.length; i++) {
+    const p = missing[i];
+    setProgress(Math.round((i/missing.length)*100), `מעבד: ${p.empName}`);
+    const bytes = await extractPage(p.pageIndex);
+    zip.file(buildFilename(tmpl, p) + '.pdf', bytes);
+    xlsxRows.push([p.empNum, p.empName, p.deptName, p.month]);
+  }
+
+  // Build Excel report
+  const ws = XLSX.utils.aoa_to_sheet(xlsxRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'חסרי מייל');
+  const xlsxBytes = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+  zip.file('חסרי_מייל.xlsx', xlsxBytes);
+
+  setProgress(100, 'מסיים...');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  showResult(`${missing.length} עובדים ללא מייל`, blob, 'חסרי_מייל.zip',
+    `📋 הורד רשימת חסרי מייל (Excel)`, () => {
+      const b = new Blob([xlsxBytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(b, 'חסרי_מייל.xlsx');
+    });
+}
+
+function showResult(msg, blob, filename, secondLabel, secondAction) {
+  let btns = `<button class="btn-primary" onclick="downloadBlob(window._lastBlob,'${filename}')">⬇️ הורד ${filename}</button>`;
+  if (secondLabel) btns += `<button class="btn-secondary" id="secondBtn">${secondLabel}</button>`;
+  document.getElementById('resultWrap').innerHTML = `
+    <div class="result-box">
+      <div class="result-info"><strong>${msg}</strong></div>
+      <div class="result-btns">${btns}</div>
+    </div>`;
+  window._lastBlob = blob;
+  if (secondAction) {
+    document.getElementById('secondBtn').onclick = secondAction;
+  }
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+</script>
+</body>
+</html>
